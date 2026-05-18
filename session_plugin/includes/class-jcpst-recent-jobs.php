@@ -113,7 +113,7 @@ class JCPST_Recent_Jobs {
 			$visited       = ! empty( $job['visited_at'] ) ? get_date_from_gmt( $job['visited_at'], 'M j, Y g:i a' ) : '';
 			$page_url      = ! empty( $job['page_url'] ) ? $job['page_url'] : home_url( $job['path'] );
 			$user_response = $this->get_user_response( get_current_user_id(), $job['path'] );
-			$stats         = $this->get_job_stats( $job['path'] );
+			$stats         = $this->get_job_stats( $job['path'], get_current_user_id() );
 
 			echo '<li class="jcpst-recent-jobs__item" data-job-path="' . esc_attr( $job['path'] ) . '" data-job-url="' . esc_url( $page_url ) . '" data-job-title="' . esc_attr( $job_title ) . '">';
 			echo '<div class="jcpst-recent-jobs__details">';
@@ -188,7 +188,7 @@ class JCPST_Recent_Jobs {
 
 		wp_send_json_success(
 			array(
-				'stats' => $this->get_job_stats( $job_path ),
+				'stats' => $this->get_job_stats( $job_path, get_current_user_id() ),
 			)
 		);
 	}
@@ -270,7 +270,17 @@ class JCPST_Recent_Jobs {
 	 * @return void
 	 */
 	private function render_stats_markup( $stats ) {
-		$applicant_label = 1 === (int) $stats['applicant_count'] ? __( 'applicant', 'jcp-session-tracker' ) : __( 'applicants', 'jcp-session-tracker' );
+    	// If no other users have responded, show a friendly message
+    	if ( empty( $stats['applicant_count'] ) || (int) $stats['applicant_count'] < 1 ) {
+        	echo '<div class="jcpst-job-stats">';
+			echo '<p style="color:#667085;font-size:14px;margin:0;line-height:1.5;">You\'re the first to respond! Check back later to see how others do.</p>';
+			echo '<button type="button" class="jcpst-job-stats__edit">' . esc_html__( 'Update answers', 'jcp-session-tracker' ) . '</button>';
+        	echo '<div class="jcpst-job-stats__note">' . esc_html__( 'Aggregated from Job Connections Project responses.', 'jcp-session-tracker' ) . '</div>';
+        	echo '</div>';
+        	return;
+    	}
+
+    	$applicant_label = 1 === (int) $stats['applicant_count'] ? __( 'applicant', 'jcp-session-tracker' ) : __( 'applicants', 'jcp-session-tracker' );
 
 		echo '<div class="jcpst-job-stats">';
 		echo '<div class="jcpst-job-stats__count"><span class="jcpst-job-stats__count-number">' . esc_html( number_format_i18n( (int) $stats['applicant_count'] ) ) . '</span> <span class="jcpst-job-stats__count-label">' . esc_html( $applicant_label ) . '</span></div>';
@@ -430,28 +440,30 @@ class JCPST_Recent_Jobs {
 	 * @param string $job_path Job path.
 	 * @return array<string, int>
 	 */
-	private function get_job_stats( $job_path ) {
-		global $wpdb;
+	private function get_job_stats( $job_path, $exclude_user_id = 0 ) {
+    	global $wpdb;
 
-		$table            = $wpdb->prefix . 'jcpst_job_responses';
-		$applicant_count  = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table} WHERE job_path = %s AND applied = 1",
-				$job_path
-			)
-		);
-		$interview_count  = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table} WHERE job_path = %s AND applied = 1 AND interviewed = 1",
-				$job_path
-			)
-		);
-		$offer_count      = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table} WHERE job_path = %s AND applied = 1 AND offered = 1",
-				$job_path
-			)
-		);
+    	$table            = $wpdb->prefix . 'jcpst_job_responses';
+    	$exclude_sql      = $exclude_user_id > 0 ? $wpdb->prepare( ' AND user_id != %d', $exclude_user_id ) : '';
+
+    	$applicant_count  = (int) $wpdb->get_var(
+        	$wpdb->prepare(
+            	"SELECT COUNT(*) FROM {$table} WHERE job_path = %s AND applied = 1",
+            	$job_path
+        	) . $exclude_sql
+    	);
+    	$interview_count  = (int) $wpdb->get_var(
+        	$wpdb->prepare(
+            	"SELECT COUNT(*) FROM {$table} WHERE job_path = %s AND applied = 1 AND interviewed = 1",
+            	$job_path
+        	) . $exclude_sql
+    	);
+    	$offer_count      = (int) $wpdb->get_var(
+        	$wpdb->prepare(
+            	"SELECT COUNT(*) FROM {$table} WHERE job_path = %s AND applied = 1 AND offered = 1",
+            	$job_path
+        	) . $exclude_sql
+    	);
 		$interview_rate   = $applicant_count > 0 ? (int) round( ( $interview_count / $applicant_count ) * 100 ) : 0;
 		$offer_rate       = $applicant_count > 0 ? (int) round( ( $offer_count / $applicant_count ) * 100 ) : 0;
 

@@ -11,6 +11,16 @@
 			return;
 		}
 
+		if (!stats.applicant_count || stats.applicant_count < 1) {
+			container.innerHTML =
+				'<div class="jcpst-job-stats">' +
+					'<p style="color:#667085;font-size:14px;margin:0;line-height:1.5;">You\'re the first to respond! Check back later to see how others do.</p>' +
+					'<button type="button" class="jcpst-job-stats__edit">Update answers</button>' +
+					'<div class="jcpst-job-stats__note">Aggregated from Job Connections Project responses.</div>' +
+				'</div>';
+			return;
+		}
+
 		var applicantLabel = stats.applicant_count === 1 ? 'applicant' : 'applicants';
 		container.innerHTML =
 			'<div class="jcpst-job-stats">' +
