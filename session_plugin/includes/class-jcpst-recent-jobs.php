@@ -23,6 +23,7 @@ class JCPST_Recent_Jobs {
 		add_shortcode( 'jcp_recently_viewed_jobs', array( $this, 'render_shortcode' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_action( 'wp_ajax_jcpst_save_job_response', array( $this, 'handle_save_job_response' ) );
+		add_action( 'wp_ajax_jcpst_record_apply', array( $this, 'handle_record_apply' ) );
 	}
 
 	/**
@@ -186,11 +187,96 @@ class JCPST_Recent_Jobs {
 			)
 		);
 
+		$stats = $this->get_job_stats( $job_path, get_current_user_id() );
+		ob_start();
+		$this->render_stats_markup( $stats );
+		$stats_html = ob_get_clean();
+
 		wp_send_json_success(
 			array(
-				'stats' => $this->get_job_stats( $job_path, get_current_user_id() ),
+				'stats'      => $stats,
+				'stats_html' => $stats_html,
 			)
 		);
+	}
+
+	/**
+	 * Handle AJAX apply-button recording from the survey form.
+	 * Only sets applied=1; never resets interviewed/offered.
+	 *
+	 * @return void
+	 */
+	public function handle_record_apply() {
+		if ( ! is_user_logged_in() ) {
+			wp_send_json_error( array( 'message' => 'Unauthorized' ), 401 );
+		}
+
+		check_ajax_referer( 'jcpst_record_apply', '_nonce' );
+
+		$user_id  = get_current_user_id();
+		$post_url = isset( $_POST['post_url'] ) ? esc_url_raw( wp_unslash( $_POST['post_url'] ) ) : '';
+		$job_path = $post_url ? wp_make_link_relative( $post_url ) : '';
+
+		if ( '' === $job_path || 0 !== strpos( $job_path, '/jobs/' ) || '/jobs/' === $job_path ) {
+			wp_send_json_error( array( 'message' => 'Invalid job.' ), 400 );
+		}
+
+		global $wpdb;
+		$table    = $wpdb->prefix . 'jcpst_job_responses';
+		$existing = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, interviewed, offered FROM {$table} WHERE user_id = %d AND job_path = %s LIMIT 1",
+				$user_id,
+				$job_path
+			),
+			ARRAY_A
+		);
+		$now = current_time( 'mysql', true );
+
+		if ( empty( $existing ) ) {
+			$wpdb->insert(
+				$table,
+				array(
+					'user_id'     => $user_id,
+					'job_path'    => $job_path,
+					'job_url'     => $post_url,
+					'job_title'   => '',
+					'applied'     => 1,
+					'interviewed' => 0,
+					'offered'     => 0,
+					'created_at'  => $now,
+					'updated_at'  => $now,
+				),
+				array( '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s' )
+			);
+		} else {
+			$wpdb->update(
+				$table,
+				array( 'applied' => 1, 'updated_at' => $now ),
+				array( 'id' => $existing['id'] ),
+				array( '%d', '%s' ),
+				array( '%d' )
+			);
+		}
+
+		// Also save submit_1 to job_survey table if survey_id provided.
+		$survey_id = isset( $_POST['survey_id'] ) ? sanitize_text_field( wp_unslash( $_POST['survey_id'] ) ) : '';
+		if ( $survey_id ) {
+			$survey_table    = $wpdb->prefix . 'job_survey';
+			$existing_submit = $wpdb->get_var( $wpdb->prepare(
+				"SELECT submit_1 FROM {$survey_table} WHERE survey_id = %s",
+				$survey_id
+			) );
+			if ( empty( $existing_submit ) ) {
+				$wpdb->update(
+					$survey_table,
+					array( 'submit_1' => 'Apply now on company website' ),
+					array( 'survey_id' => $survey_id )
+				);
+			}
+		}
+
+		wp_send_json_success();
 	}
 
 	/**

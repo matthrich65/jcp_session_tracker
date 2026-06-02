@@ -7,11 +7,12 @@
 	var roots = document.querySelectorAll('.jcpst-recent-jobs[data-interactive="1"]');
 
 	function renderStats(container, stats) {
-		if (!container || !stats) {
+		if (!container) {
 			return;
 		}
 
-		if (!stats.applicant_count || stats.applicant_count < 1) {
+		var count = (stats && stats.applicant_count) ? parseInt(stats.applicant_count, 10) : 0;
+		if (isNaN(count) || count < 1) {
 			container.innerHTML =
 				'<div class="jcpst-job-stats">' +
 					'<p style="color:#667085;font-size:14px;margin:0;line-height:1.5;">You\'re the first to respond! Check back later to see how others do.</p>' +
@@ -21,11 +22,11 @@
 			return;
 		}
 
-		var applicantLabel = stats.applicant_count === 1 ? 'applicant' : 'applicants';
+		var applicantLabel = count === 1 ? 'applicant' : 'applicants';
 		container.innerHTML =
 			'<div class="jcpst-job-stats">' +
 				'<div class="jcpst-job-stats__count">' +
-					'<span class="jcpst-job-stats__count-number">' + stats.applicant_count + '</span>' +
+					'<span class="jcpst-job-stats__count-number">' + count + '</span>' +
 					'<span class="jcpst-job-stats__count-label">' + applicantLabel + '</span>' +
 				'</div>' +
 				'<div class="jcpst-job-stats__chart">' +
@@ -181,11 +182,15 @@
 					return response.json();
 				})
 				.then(function (data) {
-					if (!data || !data.success || !data.data || !data.data.stats) {
+					if (!data || !data.success || !data.data) {
 						throw new Error('Invalid response');
 					}
 
-					renderStats(stats, data.data.stats);
+					if (data.data.stats_html !== undefined) {
+						stats.innerHTML = data.data.stats_html;
+					} else if (data.data.stats) {
+						renderStats(stats, data.data.stats);
+					}
 					stats.hidden = false;
 					form.hidden = true;
 
