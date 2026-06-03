@@ -2,7 +2,7 @@
 /**
  * Plugin Name: JCP Session Tracker
  * Description: Tracks first-party visitor sessions and pageviews with WordPress admin reporting.
- * Version: 1.4.1
+ * Version: 1.4.4
  * Author: Porter Olson
  * License: GPL-2.0-or-later
  * Text Domain: jcp-session-tracker
