@@ -35,6 +35,8 @@ class JCPST_Tracker {
 		add_action( 'wp_ajax_nopriv_jcpst_track_pageview', array( $this, 'handle_async_track_pageview' ) );
 		add_action( 'wp_ajax_nopriv_jcpst_track_pageview_get', array( $this, 'handle_async_track_pageview' ) );
 		add_action( 'wp_ajax_jcpst_track_pageview_get', array( $this, 'handle_async_track_pageview' ) );
+		add_action( 'wp_ajax_jcpst_record_time_on_page', array( $this, 'handle_record_time_on_page' ) );
+		add_action( 'wp_ajax_nopriv_jcpst_record_time_on_page', array( $this, 'handle_record_time_on_page' ) );
 		add_action( 'wp_login', array( $this, 'handle_login' ), 10, 2 );
 		add_action( 'wp_logout', array( $this, 'handle_logout' ) );
 		add_action( 'set_current_user', array( $this, 'sync_logged_in_session_state' ) );
@@ -189,6 +191,56 @@ class JCPST_Tracker {
 		);
 
 		wp_enqueue_script( 'jcpst-tracker' );
+
+		// Enqueue time-on-page tracker on job ad pages only.
+		$path = $context['path'];
+		if ( 0 === strpos( $path, '/jobs/' ) && '/jobs/' !== $path ) {
+			wp_register_script(
+				'jcpst-job-ad-tracker',
+				JCPST_PLUGIN_URL . 'assets/js/jcpst-job-ad-tracker.js',
+				array(),
+				JCPST_VERSION,
+				true
+			);
+			wp_enqueue_script( 'jcpst-job-ad-tracker' );
+		}
+	}
+
+	/**
+	 * Receive time-on-page beacon from job ad pages.
+	 *
+	 * @return void
+	 */
+	public function handle_record_time_on_page() {
+		nocache_headers();
+
+		$session_id   = isset( $_POST['session_id'] )   ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
+		$path         = isset( $_POST['path'] )         ? sanitize_text_field( wp_unslash( $_POST['path'] ) )       : '';
+		$time_seconds = isset( $_POST['time_seconds'] ) ? absint( $_POST['time_seconds'] )                          : 0;
+
+		if ( ! $session_id || ! $path || $time_seconds < 1 ) {
+			wp_send_json_error( array( 'reason' => 'invalid_data' ), 400 );
+		}
+
+		global $wpdb;
+		$table  = $wpdb->prefix . 'jcpst_pageviews';
+		$row_id = $wpdb->get_var( $wpdb->prepare(
+			"SELECT id FROM {$table} WHERE session_id = %s AND path = %s ORDER BY visited_at DESC LIMIT 1",
+			$session_id,
+			$path
+		) );
+
+		if ( $row_id ) {
+			$wpdb->update(
+				$table,
+				array( 'time_on_page' => $time_seconds ),
+				array( 'id' => $row_id ),
+				array( '%d' ),
+				array( '%d' )
+			);
+		}
+
+		wp_send_json_success();
 	}
 
 	/**
