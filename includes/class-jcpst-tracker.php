@@ -192,9 +192,9 @@ class JCPST_Tracker {
 
 		wp_enqueue_script( 'jcpst-tracker' );
 
-		// Enqueue time-on-page tracker on job ad pages only.
+		// Enqueue time-on-page tracker on job ad and survey pages.
 		$path = $context['path'];
-		if ( 0 === strpos( $path, '/jobs/' ) && '/jobs/' !== $path ) {
+		if ( ( 0 === strpos( $path, '/jobs/' ) && '/jobs/' !== $path ) || '/survey/' === $path ) {
 			wp_register_script(
 				'jcpst-job-ad-tracker',
 				JCPST_PLUGIN_URL . 'assets/js/jcpst-job-ad-tracker.js',
