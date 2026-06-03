@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'JCPST_VERSION', '1.4.2' );
+define( 'JCPST_VERSION', '1.4.3' );
 define( 'JCPST_PLUGIN_FILE', __FILE__ );
 define( 'JCPST_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'JCPST_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

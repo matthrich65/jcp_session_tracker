@@ -313,6 +313,7 @@ class JCPST_Tracker {
 			'is_admin_user'  => current_user_can( 'manage_options' ),
 			'timestamp'      => current_time( 'mysql', true ),
 			'device_summary' => $this->summarize_device( $user_agent ),
+			'utm'            => $this->parse_utm_params( $query_string ),
 		);
 
 		return $this->request_context;
@@ -363,6 +364,7 @@ class JCPST_Tracker {
 			'is_admin_user'  => current_user_can( 'manage_options' ),
 			'timestamp'      => current_time( 'mysql', true ),
 			'device_summary' => $this->summarize_device( isset( $server['HTTP_USER_AGENT'] ) ? sanitize_text_field( $server['HTTP_USER_AGENT'] ) : '' ),
+			'utm'            => $this->parse_utm_params( $query_raw ),
 		);
 	}
 
@@ -790,6 +792,8 @@ class JCPST_Tracker {
 
 		$table = $wpdb->prefix . 'jcpst_pageviews';
 
+		$utm = ! empty( $context['utm'] ) ? $context['utm'] : array();
+
 		$wpdb->insert(
 			$table,
 			array(
@@ -807,10 +811,16 @@ class JCPST_Tracker {
 				'is_admin'     => ! empty( $context['is_admin'] ) ? 1 : 0,
 				'is_ajax'      => ! empty( $context['is_ajax'] ) ? 1 : 0,
 				'is_logged_in' => ! empty( $context['is_logged_in'] ) ? 1 : 0,
+				'utm_source'   => isset( $utm['utm_source'] )   ? $utm['utm_source']   : '',
+				'utm_medium'   => isset( $utm['utm_medium'] )   ? $utm['utm_medium']   : '',
+				'utm_campaign' => isset( $utm['utm_campaign'] ) ? $utm['utm_campaign'] : '',
+				'utm_content'  => isset( $utm['utm_content'] )  ? $utm['utm_content']  : '',
+				'utm_term'     => isset( $utm['utm_term'] )     ? $utm['utm_term']     : '',
 			),
 			array(
 				'%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s',
 				'%s', '%d', '%s', '%d', '%d', '%d',
+				'%s', '%s', '%s', '%s', '%s',
 			)
 		);
 
@@ -1005,6 +1015,37 @@ class JCPST_Tracker {
 		$sec     = isset( $server['HTTP_SEC_PURPOSE'] ) ? strtolower( sanitize_text_field( $server['HTTP_SEC_PURPOSE'] ) ) : '';
 
 		return false !== strpos( $purpose, 'prefetch' ) || false !== strpos( $moz, 'prefetch' ) || false !== strpos( $sec, 'prefetch' );
+	}
+
+	/**
+	 * Parse UTM parameters from a query string.
+	 *
+	 * @param string $query_string Raw query string (without leading ?).
+	 * @return array<string, string>
+	 */
+	private function parse_utm_params( $query_string ) {
+		$params = array(
+			'utm_source'   => '',
+			'utm_medium'   => '',
+			'utm_campaign' => '',
+			'utm_content'  => '',
+			'utm_term'     => '',
+		);
+
+		if ( '' === $query_string ) {
+			return $params;
+		}
+
+		$parsed = array();
+		wp_parse_str( $query_string, $parsed );
+
+		foreach ( array_keys( $params ) as $key ) {
+			if ( ! empty( $parsed[ $key ] ) ) {
+				$params[ $key ] = sanitize_text_field( $parsed[ $key ] );
+			}
+		}
+
+		return $params;
 	}
 
 	/**
