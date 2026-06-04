@@ -214,10 +214,12 @@ class JCPST_Tracker {
 	public function handle_record_time_on_page() {
 		nocache_headers();
 
-		$session_id   = isset( $_POST['session_id'] )    ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
-		$path         = isset( $_POST['path'] )          ? sanitize_text_field( wp_unslash( $_POST['path'] ) )       : '';
-		$time_seconds = isset( $_POST['time_seconds'] )  ? absint( $_POST['time_seconds'] )                          : 0;
-		$scroll_depth = isset( $_POST['scroll_depth'] )  ? min( 100, absint( $_POST['scroll_depth'] ) )              : null;
+		$session_id               = isset( $_POST['session_id'] )               ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
+		$path                     = isset( $_POST['path'] )                     ? sanitize_text_field( wp_unslash( $_POST['path'] ) )       : '';
+		$time_seconds             = isset( $_POST['time_seconds'] )             ? absint( $_POST['time_seconds'] )                          : 0;
+		$scroll_depth             = isset( $_POST['scroll_depth'] )             ? min( 100, absint( $_POST['scroll_depth'] ) )              : null;
+		$scroll_pauses            = isset( $_POST['scroll_pauses'] )            ? absint( $_POST['scroll_pauses'] )                         : null;
+		$scroll_direction_changes = isset( $_POST['scroll_direction_changes'] ) ? absint( $_POST['scroll_direction_changes'] )              : null;
 
 		if ( ! $session_id || ! $path || $time_seconds < 1 ) {
 			wp_send_json_error( array( 'reason' => 'invalid_data' ), 400 );
@@ -237,6 +239,14 @@ class JCPST_Tracker {
 			if ( null !== $scroll_depth ) {
 				$data['max_scroll_depth'] = $scroll_depth;
 				$formats[]                = '%d';
+			}
+			if ( null !== $scroll_pauses ) {
+				$data['scroll_pauses'] = $scroll_pauses;
+				$formats[]             = '%d';
+			}
+			if ( null !== $scroll_direction_changes ) {
+				$data['scroll_direction_changes'] = $scroll_direction_changes;
+				$formats[]                        = '%d';
 			}
 			$wpdb->update( $table, $data, array( 'id' => $row_id ), $formats, array( '%d' ) );
 		}

@@ -12,7 +12,7 @@ class JCPST_Installer {
 	/**
 	 * DB schema version.
 	 */
-	const DB_VERSION = '1.5.0';
+	const DB_VERSION = '1.6.0';
 
 	/**
 	 * Activate plugin.
@@ -102,6 +102,8 @@ class JCPST_Installer {
 			utm_term varchar(191) DEFAULT NULL,
 			time_on_page int(10) unsigned DEFAULT NULL,
 			max_scroll_depth tinyint(3) unsigned DEFAULT NULL,
+			scroll_pauses smallint(5) unsigned DEFAULT NULL,
+			scroll_direction_changes smallint(5) unsigned DEFAULT NULL,
 			PRIMARY KEY  (id),
 			KEY session_id (session_id),
 			KEY user_id (user_id),
