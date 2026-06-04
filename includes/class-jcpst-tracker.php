@@ -214,9 +214,10 @@ class JCPST_Tracker {
 	public function handle_record_time_on_page() {
 		nocache_headers();
 
-		$session_id   = isset( $_POST['session_id'] )   ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
-		$path         = isset( $_POST['path'] )         ? sanitize_text_field( wp_unslash( $_POST['path'] ) )       : '';
-		$time_seconds = isset( $_POST['time_seconds'] ) ? absint( $_POST['time_seconds'] )                          : 0;
+		$session_id   = isset( $_POST['session_id'] )    ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
+		$path         = isset( $_POST['path'] )          ? sanitize_text_field( wp_unslash( $_POST['path'] ) )       : '';
+		$time_seconds = isset( $_POST['time_seconds'] )  ? absint( $_POST['time_seconds'] )                          : 0;
+		$scroll_depth = isset( $_POST['scroll_depth'] )  ? min( 100, absint( $_POST['scroll_depth'] ) )              : null;
 
 		if ( ! $session_id || ! $path || $time_seconds < 1 ) {
 			wp_send_json_error( array( 'reason' => 'invalid_data' ), 400 );
@@ -231,13 +232,13 @@ class JCPST_Tracker {
 		) );
 
 		if ( $row_id ) {
-			$wpdb->update(
-				$table,
-				array( 'time_on_page' => $time_seconds ),
-				array( 'id' => $row_id ),
-				array( '%d' ),
-				array( '%d' )
-			);
+			$data    = array( 'time_on_page' => $time_seconds );
+			$formats = array( '%d' );
+			if ( null !== $scroll_depth ) {
+				$data['max_scroll_depth'] = $scroll_depth;
+				$formats[]                = '%d';
+			}
+			$wpdb->update( $table, $data, array( 'id' => $row_id ), $formats, array( '%d' ) );
 		}
 
 		wp_send_json_success();

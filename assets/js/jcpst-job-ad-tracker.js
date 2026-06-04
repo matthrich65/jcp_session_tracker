@@ -3,10 +3,23 @@
 		return;
 	}
 
-	var startTime    = Date.now();
-	var hiddenTime   = 0;
-	var hiddenStart  = null;
-	var sent         = false;
+	var startTime      = Date.now();
+	var hiddenTime     = 0;
+	var hiddenStart    = null;
+	var sent           = false;
+	var maxScrollDepth = 0;
+
+	function updateScrollDepth() {
+		var scrolled = window.scrollY + window.innerHeight;
+		var total    = document.documentElement.scrollHeight;
+		if ( total > 0 ) {
+			var depth = Math.round( ( scrolled / total ) * 100 );
+			if ( depth > maxScrollDepth ) { maxScrollDepth = Math.min( 100, depth ); }
+		}
+	}
+
+	window.addEventListener( 'scroll', updateScrollDepth, { passive: true } );
+	updateScrollDepth();
 
 	function getActiveSeconds() {
 		var hidden = hiddenTime;
@@ -24,10 +37,11 @@
 		if ( seconds < 1 ) { return; }
 
 		var payload = new URLSearchParams();
-		payload.append( 'action',       'jcpst_record_time_on_page' );
-		payload.append( 'session_id',   window.jcpstTracker.sessionId );
-		payload.append( 'path',         window.location.pathname );
-		payload.append( 'time_seconds', String( seconds ) );
+		payload.append( 'action',        'jcpst_record_time_on_page' );
+		payload.append( 'session_id',    window.jcpstTracker.sessionId );
+		payload.append( 'path',          window.location.pathname );
+		payload.append( 'time_seconds',  String( seconds ) );
+		payload.append( 'scroll_depth',  String( maxScrollDepth ) );
 
 		var data = new Blob( [ payload.toString() ], { type: 'application/x-www-form-urlencoded' } );
 
