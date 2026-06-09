@@ -234,13 +234,15 @@ class JCPST_Recent_Jobs {
 		$now = current_time( 'mysql', true );
 
 		if ( empty( $existing ) ) {
+			$post_id   = url_to_postid( $post_url );
+			$job_title = $post_id ? get_the_title( $post_id ) : '';
 			$wpdb->insert(
 				$table,
 				array(
 					'user_id'     => $user_id,
 					'job_path'    => $job_path,
 					'job_url'     => $post_url,
-					'job_title'   => '',
+					'job_title'   => $job_title,
 					'applied'     => 1,
 					'interviewed' => 0,
 					'offered'     => 0,
